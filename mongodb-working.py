@@ -9,15 +9,13 @@ from llama_index.embeddings import VoyageEmbedding
 from llama_index import VectorStoreIndex, SimpleDirectoryReader, ServiceContext
 from llama_index.storage.storage_context import StorageContext
 from llama_index import set_global_service_context
+from llama_index.vector_stores.mongodb import MongoDBAtlasVectorSearch
 
 import logging
 import sys
 import os
 
 import pymongo
-from llama_index.vector_stores.azurecosmosmongo import (
-    AzureCosmosDBMongoDBVectorSearch,
-)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -44,11 +42,9 @@ embed_model = VoyageEmbedding(model_name=os.getenv("VOYAGE_MODEL_NAME"), voyage_
 service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
 set_global_service_context(service_context)
 
-
 # Load documents from the data directory
 documents = SimpleDirectoryReader("data/paul_graham").load_data()
 print("Document ID:", documents[0].doc_id)
-
 
 """### Create the index
 Here we establish the connection to an Azure Cosmosdb mongodb vCore cluster and create an vector search index.
@@ -56,16 +52,14 @@ Here we establish the connection to an Azure Cosmosdb mongodb vCore cluster and 
 
 mongodb_client = pymongo.MongoClient(os.getenv("CONNECTION_STRING"))
 
-store = AzureCosmosDBMongoDBVectorSearch(
+store = MongoDBAtlasVectorSearch(
     mongodb_client=mongodb_client,
     db_name=os.getenv("DB_NAME"),
     collection_name="paul_graham_essay",
 )
 
 storage_context = StorageContext.from_defaults(vector_store=store)
-index = VectorStoreIndex.from_documents(
-    documents, storage_context=storage_context
-)
+index = VectorStoreIndex.from_documents(documents)
 
 query_engine = index.as_query_engine()
 response = query_engine.query("What did the author love working on?")
@@ -141,4 +135,3 @@ We can now ask questions using our index.
 # print(answer.get_formatted_sources())
 # print("Query was:", query)
 # print("Answer was:", answer)
-
